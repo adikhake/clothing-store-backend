@@ -14,22 +14,19 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final CartRepository cartRepository;
-    private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         CartRepository cartRepository,
-                        CartItemRepository cartItemRepository,
                         UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
-        this.cartItemRepository = cartItemRepository;
         this.userRepository = userRepository;
     }
 
-    // 🧾 Place order from user's cart
+    @Transactional
     public Order placeOrder(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -41,43 +38,44 @@ public class OrderService {
             throw new RuntimeException("Cart is empty!");
         }
 
-        // Create new order
-        Order order = new Order(user, cart.getTotalPrice(), "PENDING", "PLACED");
+        double totalAmount = cart.getCartItems().stream()
+                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
+                .sum();
+        
+        Order order = new Order(user, totalAmount, "PENDING", "PLACED");
         order = orderRepository.save(order);
 
-        // Convert cart items to order items
         for (CartItem cartItem : cart.getCartItems()) {
             OrderItem orderItem = new OrderItem(
                     order,
                     cartItem.getProduct(),
                     cartItem.getQuantity(),
-                    cartItem.getPrice()
+                    cartItem.getProduct().getPrice()
             );
             orderItemRepository.save(orderItem);
         }
 
-        // Clear the cart after order placement
-        cartItemRepository.deleteAll(cart.getCartItems());
+        cart.getCartItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
         return order;
     }
-
-    // 📋 Get all orders for a specific user
+   
+    @Transactional
     public List<Order> getOrdersByUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return orderRepository.findByUser(user);
     }
 
-    // 🔍 Get single order by ID
+    @Transactional
     public Order getOrderById(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
     }
 
-    // 🧾 Update order status (Admin)
+   @Transactional
     public Order updateOrderStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));

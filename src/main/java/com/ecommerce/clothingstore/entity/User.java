@@ -27,7 +27,7 @@ public class User {
 	private String password;
 	@Column(nullable = false)
 	private String role;	
-	@OneToOne(mappedBy = "user",cascade = CascadeType.ALL)
+	@OneToOne(mappedBy = "user",cascade = CascadeType.ALL,orphanRemoval = true)
 	private Cart cart;
 	
 	public static final String ROLE_USER = "ROLE_USER";

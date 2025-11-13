@@ -61,10 +61,11 @@ public class CartController {
     }
 
     // 🧾 View user's cart
-    @GetMapping("/{userId}")
-    public ResponseEntity<ApiResponse<CartDTO>> getUserCart(@PathVariable Long userId) {
+    @GetMapping
+    public ResponseEntity<ApiResponse<CartDTO>> getUserCart() {
+    	User user = getCurrentUser(); 
         return ResponseEntity.ok(
-                new ApiResponse<>(true, "Cart fetched successfully", cartService.getCartByUser(userId))
+                new ApiResponse<>(true, "Cart fetched successfully", cartService.getCartByUser(user.getUserId()))
         );
     }
 
@@ -80,9 +81,10 @@ public class CartController {
     }
 
     // 🧹 Clear cart
-    @DeleteMapping("/{userId}/clear")
-    public ResponseEntity<ApiResponse<String>> clearCart(@PathVariable Long userId) {
-        cartService.clearCart(userId);
+    @DeleteMapping("/clear")
+    public ResponseEntity<ApiResponse<String>> clearCart() {
+    	User user = getCurrentUser();
+        cartService.clearCart(user.getUserId());
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Cart cleared successfully", "Cart is now empty")
         );

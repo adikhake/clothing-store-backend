@@ -2,11 +2,15 @@ package com.ecommerce.clothingstore.controller;
 
 import com.ecommerce.clothingstore.dto.OrderDTO;
 import com.ecommerce.clothingstore.entity.Order;
+import com.ecommerce.clothingstore.entity.User;
 import com.ecommerce.clothingstore.mapper.EntityMapper;
 import com.ecommerce.clothingstore.payload.ApiResponse;
+import com.ecommerce.clothingstore.repository.UserRepository;
 import com.ecommerce.clothingstore.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,21 +23,29 @@ public class OrderController {
 
     private final OrderService orderService;
     private final EntityMapper entityMapper;
+    private final UserRepository userRepository;
+    
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
-    // 🧾 Place new order for user
-    @PostMapping("/place/{userId}")
-    public ResponseEntity<ApiResponse<OrderDTO>> placeOrder(@PathVariable Long userId) {
-        Order order = orderService.placeOrder(userId);
+    @PostMapping("/place")
+    public ResponseEntity<ApiResponse<OrderDTO>> placeOrder() {
+    	User user = getCurrentUser();
+        Order order = orderService.placeOrder(user.getUserId());
         OrderDTO dto = entityMapper.toOrderDTO(order);
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Order placed successfully", dto)
         );
     }
 
-    // 📋 Get all orders for a user
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<ApiResponse<List<OrderDTO>>> getOrdersByUser(@PathVariable Long userId) {
-        List<Order> orders = orderService.getOrdersByUser(userId);
+    @GetMapping("/user")
+    public ResponseEntity<ApiResponse<List<OrderDTO>>> getOrdersByUser() {
+    	User user = getCurrentUser();
+        List<Order> orders = orderService.getOrdersByUser(user.getUserId());
         List<OrderDTO> dtos = orders.stream()
                 .map(entityMapper::toOrderDTO)
                 .collect(Collectors.toList());
@@ -42,7 +54,6 @@ public class OrderController {
         );
     }
 
-    // 🔍 Get single order by ID
     @GetMapping("/{orderId}")
     public ResponseEntity<ApiResponse<OrderDTO>> getOrderById(@PathVariable Long orderId) {
         Order order = orderService.getOrderById(orderId);
@@ -53,7 +64,7 @@ public class OrderController {
         );
     }
 
-    // 🧾 Update order status (Admin use)
+    // (Admin use)
     @PutMapping("/{orderId}/status")
     public ResponseEntity<ApiResponse<OrderDTO>> updateOrderStatus(
             @PathVariable Long orderId,

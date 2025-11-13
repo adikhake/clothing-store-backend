@@ -64,13 +64,13 @@ public class CartService {
             existingItem.setQuantity(existingItem.getQuantity() + quantity);
             existingItem.setPrice(product.getPrice() * existingItem.getQuantity()); // ✅ update subtotal
         } else {
-            CartItem newItem = new CartItem(cart, product, quantity, product.getPrice() * quantity); // ✅ subtotal
+            CartItem newItem = new CartItem(cart, product, quantity, product.getPrice()); // ✅ subtotal
             cart.getCartItems().add(newItem);
         }
 
         // ✅ Recalculate total cart value
         double total = cart.getCartItems().stream()
-                .mapToDouble(CartItem::getPrice)
+                .mapToDouble(CartItem::getSubTotal)
                 .sum();
 
         cart.setTotalPrice(total);
@@ -124,7 +124,8 @@ public class CartService {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Cart not found"));
         cart.getCartItems().clear();
-        updateCartTotal(cart);
+        cart.setTotalPrice(0.0);
+        cart.setUpdatedAt(LocalDateTime.now());
         cartRepository.save(cart);
     }
 
@@ -144,8 +145,15 @@ public class CartService {
 	        cart.getCartItems().remove(item);
 	    } else {
 	        item.setQuantity(quantity);
+	        item.setPrice(item.getProduct().getPrice() * quantity);
 	    }
-		return updateCartTotal(cart);
+	    double total = cart.getCartItems().stream()
+	            .mapToDouble(i -> i.getPrice())
+	            .sum();
+	    cart.setTotalPrice(total);
+
+	    cart.setUpdatedAt(LocalDateTime.now());
+		return cartRepository.save(cart);
 	}
 
 }
